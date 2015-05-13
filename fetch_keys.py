@@ -116,7 +116,7 @@ def main():
                 ofile.write(os.linesep)
         os.chmod(tempname,
                  stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-        os.rename(tempname, args.f)
+        shutil.move(tempname, args.f)
 
 if __name__ == '__main__':
     main()
