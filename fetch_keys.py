@@ -114,8 +114,7 @@ def main():
             for line in lines:
                 ofile.write(line)
                 ofile.write(os.linesep)
-        os.chmod(tempname,
-                 stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+        os.chmod(tempname, stat.S_IRUSR | stat.S_IWUSR)
         shutil.move(tempname, args.f)
 
 if __name__ == '__main__':
