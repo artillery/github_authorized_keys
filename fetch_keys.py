@@ -71,15 +71,16 @@ def install_lib(venv, name, pip_name=None):
         pip = os.path.join(venv, 'bin', 'pip')
         subprocess.check_call([pip, 'install', pip_name])
 
-
 def main():
     """ Generate a ssh authorized_keys file from a github org """
     parser = argparse.ArgumentParser(description=main.__doc__)
     default_venv_dir = os.path.join(tempfile.gettempdir(), 'ssh_gen_keys_env')
-    parser.add_argument('-v', help="path to virtualenv (default %(default)d)",
+    parser.add_argument('-v', help="path to virtualenv (default %(default)s)",
                         default=default_venv_dir)
     parser.add_argument('-f', help="The file to write to (default is stdout)")
+    parser.add_argument('-t', help="Access token")
     parser.add_argument('organization', help="The name of the github organization")
+    parser.add_argument('team', help="The name of the team", nargs='?')
     args = parser.parse_args()
 
     venv_dir = args.v
@@ -90,20 +91,41 @@ def main():
         install_lib(venv_dir, name, pip_name)
 
     import requests
-    resp = requests.get('https://api.github.com/orgs/%s/members' %
-                        args.organization)
-    if not resp.ok:
+    def get(uri):
+        """ Helper method for hitting the github API """
+        headers = {}
+        if args.t is not None:
+            headers['Authorization'] = 'token %s' % args.t
+        url = 'https://api.github.com%s' % uri
+        resp = requests.get(url, headers=headers)
         data = resp.json()
-        if 'message' in data:
-            print(data['message'])
-        if 'documentation_url' in data:
-            print(data['documentation_url'])
-        return
+        if not resp.ok:
+            if 'message' in data:
+                print(data['message'])
+            if 'documentation_url' in data:
+                print(data['documentation_url'])
+        resp.raise_for_status()
+        return data
+
+    if args.team is not None:
+        teams = get("/orgs/%s/teams" % args.organization)
+        team = None
+        for t in teams:
+            if args.team == t['slug'] or args.team == t['name']:
+                team = t
+                break
+        if team is None:
+            print("Could not find team %r" % args.team)
+            sys.exit(1)
+        members = get("/teams/%s/members" % team['id'])
+    else:
+        members = get("/orgs/%s/members" % args.organization)
+
     lines = []
-    for user in resp.json():
+    for user in members:
         username = user['login']
-        resp = requests.get('https://api.github.com/users/%s/keys' % username)
-        for key in resp.json():
+        keys = get("/users/%s/keys" % username)
+        for key in keys:
             lines.append(key['key'])
 
     if args.f is None:
