@@ -124,6 +124,7 @@ def main():
     lines = []
     for user in members:
         username = user['login']
+        print("Getting key for %s" % username)
         keys = get("/users/%s/keys" % username)
         for key in keys:
             lines.append(key['key'])
